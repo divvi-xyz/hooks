@@ -20,6 +20,7 @@ import {
 import { Transaction } from '../types/shortcuts'
 import { parseRequest } from './parseRequest'
 import { createI18Next } from '../utils/i18next'
+import cors from 'cors'
 
 const DEFAULT_EARN_SUPPORTED_APP_IDS = ['aave', 'allbridge']
 const DEFAULT_EARN_SUPPORTED_POSITION_IDS = new Set([
@@ -89,6 +90,14 @@ function createApp() {
   const config = getConfig()
 
   const app = express()
+
+  app.use(
+    cors({
+      origin: '*',
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    }),
+  )
+
   app.use(
     createLoggingMiddleware({
       logger,
