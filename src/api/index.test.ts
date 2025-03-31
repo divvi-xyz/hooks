@@ -530,3 +530,18 @@ describe('POST /triggerShortcut', () => {
     })
   })
 })
+
+describe('CORS', () => {
+  it("allows all origins to access the function's resources", async () => {
+    const server = getTestServer('hooks-api')
+    const response = await request(server)
+      .get('/getPositions')
+      .query({
+        networkIds: [NetworkId['celo-mainnet']],
+        address: WALLET_ADDRESS,
+      })
+      .expect(200)
+
+    expect(response.header['access-control-allow-origin']).toBe('*')
+  })
+})
