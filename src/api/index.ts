@@ -4,10 +4,11 @@ import {
   asyncHandler as valoraAsyncHandler,
 } from '@valora/http-handler'
 import { createLoggingMiddleware } from '@valora/logging'
+import cors from 'cors'
 import express from 'express'
 import i18nextMiddleware from 'i18next-http-middleware'
-import { z } from 'zod'
 import semver from 'semver'
+import { z } from 'zod'
 import { getConfig } from '../config'
 import { logger } from '../log'
 import { getBaseTokensInfo, getPositions } from '../runtime/getPositions'
@@ -18,9 +19,8 @@ import {
   NetworkId,
 } from '../types/networkId'
 import { Transaction } from '../types/shortcuts'
-import { parseRequest } from './parseRequest'
 import { createI18Next } from '../utils/i18next'
-import cors from 'cors'
+import { parseRequest } from './parseRequest'
 
 const DEFAULT_EARN_SUPPORTED_APP_IDS = ['aave', 'allbridge']
 const DEFAULT_EARN_SUPPORTED_POSITION_IDS = new Set([
