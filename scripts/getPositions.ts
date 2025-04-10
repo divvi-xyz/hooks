@@ -7,7 +7,6 @@ import { getPositions, getBaseTokensInfo } from '../src/runtime/getPositions'
 import { NetworkId } from '../src/types/networkId'
 import { t } from '../test/i18next'
 import { getConfig } from '../src/config'
-import { bytesToHex } from 'viem'
 
 const argv = yargs(process.argv.slice(2))
   .usage('Usage: $0 --address <address>')
