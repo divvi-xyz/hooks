@@ -6,7 +6,7 @@ import {
   ContractPositionDefinition,
   ClaimType,
 } from '../../types/positions'
-import { Address, bytesToHex, hexToBytes, toHex } from 'viem'
+import { Address } from 'viem'
 import {
   DecimalNumber,
   toDecimalNumber,
