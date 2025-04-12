@@ -11,6 +11,7 @@ export interface Config {
   EARN_SUPPORTED_NETWORK_IDS: NetworkId[]
   SIMULATE_TRANSACTIONS_URL?: string
   GET_SWAP_QUOTE_URL: string
+  ALLBRIDGE_API_KEY?: string
 }
 
 export function networkIdToRpcUrlTransform(val: string | undefined) {
@@ -53,6 +54,7 @@ export function getConfig(): Config {
     EARN_SUPPORTED_NETWORK_IDS: z
       .string()
       .transform((val) => val.split(',') as NetworkId[]),
+    ALLBRIDGE_API_KEY: z.string().optional(),
   })
 
   // Provide defaults in development
@@ -60,9 +62,7 @@ export function getConfig(): Config {
   const developmentSchema = sharedSchema.extend({
     GET_TOKENS_INFO_URL: z
       .string()
-      .default(
-        'https://blockchain-api-dot-celo-mobile-mainnet.appspot.com/tokensInfo',
-      ),
+      .default('https://api.mainnet.valora.xyz/getTokensInfoWithPrices'),
     GOOGLE_CLOUD_PROJECT: z.string().default('dev-project'),
     POSITION_IDS: z
       .string()

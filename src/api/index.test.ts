@@ -12,7 +12,7 @@ import { getConfig } from '../config'
 
 jest.mock('../config')
 jest.mocked(getConfig).mockReturnValue({
-  POSITION_IDS: [],
+  POSITION_IDS: ['uniswap', 'aave', 'curve'],
   GET_TOKENS_INFO_URL: 'https://valoraapp.com/mock-endpoint',
   GOOGLE_CLOUD_PROJECT: 'dev-project',
   SHORTCUT_IDS: [],
@@ -281,6 +281,10 @@ jest.mocked(getShortcuts).mockResolvedValue(TEST_SHORTCUTS)
 
 const WALLET_ADDRESS = '0x0000000000000000000000000000000000007e57'
 
+beforeEach(() => {
+  jest.clearAllMocks()
+})
+
 describe('GET /getPositions', () => {
   it('returns balances for celo', async () => {
     const server = getTestServer('hooks-api')
@@ -322,6 +326,37 @@ describe('GET /getPositions', () => {
       data: TEST_POSITIONS_CELO,
     })
   })
+
+  for (const [userAgent, shouldIncludeAave] of [
+    ['Valora/1.90.0', true],
+    ['Valora/1.100.0', true],
+    ['Valora/1.89.9', false],
+    ['Valora/1.89.10', false],
+    ['SomeOtherApp/1.90.0', true],
+    [undefined, true],
+  ] as const) {
+    it(`returns positions for User-Agent ${userAgent ?? 'undefined'} ${
+      shouldIncludeAave ? 'including' : 'excluding'
+    } Aave`, async () => {
+      const server = getTestServer('hooks-api')
+      await request(server)
+        .get('/getPositions')
+        .set('user-agent', userAgent ?? '')
+        .query({
+          networkIds: [NetworkId['arbitrum-one']],
+          address: WALLET_ADDRESS,
+        })
+        .expect(200)
+
+      expect(getPositions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          appIds: shouldIncludeAave
+            ? expect.arrayContaining(['aave']) // eslint-disable-line jest/no-conditional-expect
+            : expect.not.arrayContaining(['aave']), // eslint-disable-line jest/no-conditional-expect
+        }),
+      )
+    })
+  }
 })
 
 describe('GET /getEarnPositions', () => {
@@ -493,5 +528,20 @@ describe('POST /triggerShortcut', () => {
       },
       message: 'Invalid request',
     })
+  })
+})
+
+describe('CORS', () => {
+  it("allows all origins to access the function's resources", async () => {
+    const server = getTestServer('hooks-api')
+    const response = await request(server)
+      .get('/getPositions')
+      .query({
+        networkIds: [NetworkId['celo-mainnet']],
+        address: WALLET_ADDRESS,
+      })
+      .expect(200)
+
+    expect(response.header['access-control-allow-origin']).toBe('*')
   })
 })

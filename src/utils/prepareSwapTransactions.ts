@@ -6,7 +6,13 @@ import {
 } from '../types/shortcuts'
 import { EvmContractCall, Hook as SquidHook } from '@0xsquid/squid-types'
 import { NetworkId } from '../types/networkId'
-import { Address, encodeFunctionData, erc20Abi, parseUnits } from 'viem'
+import {
+  Address,
+  encodeFunctionData,
+  erc20Abi,
+  parseUnits,
+  zeroAddress,
+} from 'viem'
 import { logger } from '../log'
 import { getConfig } from '../config'
 import got from './got'
@@ -47,6 +53,9 @@ export async function prepareSwapTransactions({
   enableAppFee?: boolean
 }): Promise<TriggerOutputShape<'swap-deposit'>> {
   const amountToSwap = parseUnits(swapFromToken.amount, swapFromToken.decimals)
+  // use the token's networkId if present, but fallback to the networkId
+  // as older clients supporting only same chain swap and deposit won't set it.
+  const fromNetworkId = swapFromToken.networkId ?? networkId
 
   const swapParams = {
     buyToken: swapToTokenAddress,
@@ -54,7 +63,7 @@ export async function prepareSwapTransactions({
     buyNetworkId: networkId,
     ...(swapFromToken.address && { sellToken: swapFromToken.address }),
     sellIsNative: swapFromToken.isNative,
-    sellNetworkId: networkId,
+    sellNetworkId: fromNetworkId,
     sellAmount: amountToSwap.toString(),
     slippagePercentage: '1',
     postHook,
@@ -97,12 +106,12 @@ export async function prepareSwapTransactions({
     throw new Error('Unable to get swap quote')
   }
 
-  const client = getClient(networkId)
+  const client = getClient(fromNetworkId)
 
   const transactions: Transaction[] = []
+  const { allowanceTarget } = swapQuote.unvalidatedSwapTransaction
 
-  if (!swapFromToken.isNative && swapFromToken.address) {
-    const { allowanceTarget } = swapQuote.unvalidatedSwapTransaction
+  if (allowanceTarget !== zeroAddress && swapFromToken.address) {
     const approvedAllowanceForSpender = await client.readContract({
       address: swapFromToken.address,
       abi: erc20Abi,
@@ -118,7 +127,7 @@ export async function prepareSwapTransactions({
       })
 
       const approveTx: Transaction = {
-        networkId,
+        networkId: fromNetworkId,
         from: walletAddress,
         to: swapFromToken.address,
         data,
@@ -127,21 +136,20 @@ export async function prepareSwapTransactions({
     }
   }
 
-  const { from, to, data, value, gas, estimatedGasUse } =
+  const { from, to, data, value, gas, estimatedGasUse, simulationStatus } =
     swapQuote.unvalidatedSwapTransaction
 
   const swapTx: Transaction = {
-    networkId,
+    networkId: fromNetworkId,
     from,
     to,
     data,
     value: BigInt(value),
-    // estimatedGasUse is from the simulation, gas is from the swap provider
-    // add 15% padding to the simulation if it's available, otherwise fallback
-    // to the swap provider's gas
-    gas: estimatedGasUse
-      ? (BigInt(estimatedGasUse) * 115n) / 100n
-      : BigInt(gas),
+    // if gas was simulated, add a 15% buffer
+    gas:
+      simulationStatus === 'success'
+        ? (BigInt(gas) * 115n) / 100n
+        : BigInt(gas),
     estimatedGasUse: estimatedGasUse ? BigInt(estimatedGasUse) : undefined,
   }
 

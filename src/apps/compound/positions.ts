@@ -64,9 +64,7 @@ const MARKETS: { networkId: NetworkId; address: Address }[] = [
 const hook: PositionsHook = {
   getInfo() {
     return {
-      id: 'compound',
       name: 'Compound',
-      description: 'Compound markets',
     }
   },
   async getPositionDefinitions({ networkId, address }) {
@@ -151,7 +149,7 @@ const hook: PositionsHook = {
                 title: `${tokenDescription.symbol} ${type}`,
                 description: `${baseTokenDescription.symbol} Market`,
                 imageUrl:
-                  'https://raw.githubusercontent.com/valora-inc/hooks/main/src/apps/compound/assets/compound.png',
+                  'https://raw.githubusercontent.com/divvi-xyz/hooks/main/src/apps/compound/assets/compound.png',
                 manageUrl: COMPOUND_NETWORK_NAME[networkId]
                   ? `https://app.compound.finance/markets/${baseTokenDescription.symbol}-${COMPOUND_NETWORK_NAME[networkId]}`
                   : undefined,

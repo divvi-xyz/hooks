@@ -4,11 +4,10 @@ import {
   asyncHandler as valoraAsyncHandler,
 } from '@valora/http-handler'
 import { createLoggingMiddleware } from '@valora/logging'
+import cors from 'cors'
 import express from 'express'
-import i18next from 'i18next'
-import Backend from 'i18next-fs-backend'
 import i18nextMiddleware from 'i18next-http-middleware'
-import path from 'path'
+import semver from 'semver'
 import { z } from 'zod'
 import { getConfig } from '../config'
 import { logger } from '../log'
@@ -20,6 +19,7 @@ import {
   NetworkId,
 } from '../types/networkId'
 import { Transaction } from '../types/shortcuts'
+import { createI18Next } from '../utils/i18next'
 import { parseRequest } from './parseRequest'
 
 const DEFAULT_EARN_SUPPORTED_APP_IDS = ['aave', 'allbridge']
@@ -29,24 +29,9 @@ const DEFAULT_EARN_SUPPORTED_POSITION_IDS = new Set([
   `${NetworkId['arbitrum-sepolia']}:0x460b97bd498e1157530aeb3086301d5225b91216`,
   // Allbridge USDT
   `${NetworkId['celo-mainnet']}:0xfb2c7c10e731ebe96dabdf4a96d656bfe8e2b5af`,
+  // Somm Real Yield ETH
+  `${NetworkId['op-mainnet']}:0xc47bb288178ea40bf520a91826a3dee9e0dbfa4c`,
 ])
-
-const DEFAULT_LANGUAGE = 'base'
-
-i18next
-  .use(Backend)
-  .use(i18nextMiddleware.LanguageDetector)
-  .init({
-    backend: {
-      // eslint-disable-next-line no-path-concat
-      loadPath: path.join(__dirname, '../../locales/{{lng}}.json'),
-    },
-    fallbackLng: DEFAULT_LANGUAGE,
-    preload: [DEFAULT_LANGUAGE],
-  })
-  .catch((error) => {
-    throw new Error(`Failed to initialize i18next: ${error}`)
-  })
 
 // Copied over from https://github.com/valora-inc/valora-rest-api/blob/main/src/middleware/requestMetadata.ts#L65
 function getValoraAppVersion(userAgent: string | undefined) {
@@ -105,12 +90,20 @@ function createApp() {
   const config = getConfig()
 
   const app = express()
+
+  app.use(
+    cors({
+      origin: '*',
+    }),
+  )
+
   app.use(
     createLoggingMiddleware({
       logger,
       projectId: config.GOOGLE_CLOUD_PROJECT,
     }),
   )
+  const i18next = createI18Next()
   app.use(i18nextMiddleware.handle(i18next))
 
   const getHooksRequestSchema = z.object({
@@ -141,8 +134,8 @@ function createApp() {
       const userAgent = req.header('user-agent')
       const valoraAppVersion = getValoraAppVersion(userAgent)
       const returnAavePositions = valoraAppVersion
-        ? valoraAppVersion >= '1.90.0'
-        : false
+        ? semver.gte(valoraAppVersion, '1.90.0')
+        : true
       const { address } = parsedRequest.query
       const networkIds = getNetworkIds(parsedRequest.query)
       const appIds = config.POSITION_IDS.filter((appId) =>

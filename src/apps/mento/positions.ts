@@ -73,7 +73,7 @@ async function getVeMentoPositionDefinition(
         2,
       )}`,
       imageUrl:
-        'https://raw.githubusercontent.com/valora-inc/hooks/main/src/apps/mento/assets/veMENTO.png',
+        'https://raw.githubusercontent.com/divvi-xyz/hooks/main/src/apps/mento/assets/veMENTO.png',
       manageUrl: undefined,
     },
     balances: async ({ resolvedTokensByTokenId }) => {
@@ -95,9 +95,7 @@ async function getVeMentoPositionDefinition(
 const hook: PositionsHook = {
   getInfo() {
     return {
-      id: 'mento',
       name: 'Mento',
-      description: '',
     }
   },
   async getPositionDefinitions({ networkId, address }) {
