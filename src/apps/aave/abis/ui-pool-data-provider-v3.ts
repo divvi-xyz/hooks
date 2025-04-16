@@ -3,12 +3,12 @@ export const uiPoolDataProviderV3Abi = [
   {
     inputs: [
       {
-        internalType: 'contract AggregatorInterface',
+        internalType: 'contract IChainlinkAggregator',
         name: '_networkBaseTokenPriceInUsdProxyAggregator',
         type: 'address',
       },
       {
-        internalType: 'contract AggregatorInterface',
+        internalType: 'contract IChainlinkAggregator',
         name: '_marketReferenceCurrencyPriceInUsdProxyAggregator',
         type: 'address',
       },
@@ -19,70 +19,11 @@ export const uiPoolDataProviderV3Abi = [
   {
     inputs: [],
     name: 'ETH_CURRENCY_UNIT',
-    outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [],
-    name: 'MKR_ADDRESS',
-    outputs: [{ internalType: 'address', name: '', type: 'address' }],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [{ internalType: 'bytes32', name: '_bytes32', type: 'bytes32' }],
-    name: 'bytes32ToString',
-    outputs: [{ internalType: 'string', name: '', type: 'string' }],
-    stateMutability: 'pure',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'contract IPoolAddressesProvider',
-        name: 'provider',
-        type: 'address',
-      },
-    ],
-    name: 'getEModes',
     outputs: [
       {
-        components: [
-          { internalType: 'uint8', name: 'id', type: 'uint8' },
-          {
-            components: [
-              { internalType: 'uint16', name: 'ltv', type: 'uint16' },
-              {
-                internalType: 'uint16',
-                name: 'liquidationThreshold',
-                type: 'uint16',
-              },
-              {
-                internalType: 'uint16',
-                name: 'liquidationBonus',
-                type: 'uint16',
-              },
-              {
-                internalType: 'uint128',
-                name: 'collateralBitmap',
-                type: 'uint128',
-              },
-              { internalType: 'string', name: 'label', type: 'string' },
-              {
-                internalType: 'uint128',
-                name: 'borrowableBitmap',
-                type: 'uint128',
-              },
-            ],
-            internalType: 'struct DataTypes.EModeCategory',
-            name: 'eMode',
-            type: 'tuple',
-          },
-        ],
-        internalType: 'struct IUiPoolDataProviderV3.Emode[]',
+        internalType: 'uint256',
         name: '',
-        type: 'tuple[]',
+        type: 'uint256',
       },
     ],
     stateMutability: 'view',
@@ -91,7 +32,7 @@ export const uiPoolDataProviderV3Abi = [
   {
     inputs: [
       {
-        internalType: 'contract IPoolAddressesProvider',
+        internalType: 'contract ILendingPoolAddressesProvider',
         name: 'provider',
         type: 'address',
       },
@@ -100,10 +41,26 @@ export const uiPoolDataProviderV3Abi = [
     outputs: [
       {
         components: [
-          { internalType: 'address', name: 'underlyingAsset', type: 'address' },
-          { internalType: 'string', name: 'name', type: 'string' },
-          { internalType: 'string', name: 'symbol', type: 'string' },
-          { internalType: 'uint256', name: 'decimals', type: 'uint256' },
+          {
+            internalType: 'address',
+            name: 'underlyingAsset',
+            type: 'address',
+          },
+          {
+            internalType: 'string',
+            name: 'name',
+            type: 'string',
+          },
+          {
+            internalType: 'string',
+            name: 'symbol',
+            type: 'string',
+          },
+          {
+            internalType: 'uint256',
+            name: 'decimals',
+            type: 'uint256',
+          },
           {
             internalType: 'uint256',
             name: 'baseLTVasCollateral',
@@ -119,25 +76,59 @@ export const uiPoolDataProviderV3Abi = [
             name: 'reserveLiquidationBonus',
             type: 'uint256',
           },
-          { internalType: 'uint256', name: 'reserveFactor', type: 'uint256' },
+          {
+            internalType: 'uint256',
+            name: 'reserveFactor',
+            type: 'uint256',
+          },
           {
             internalType: 'bool',
             name: 'usageAsCollateralEnabled',
             type: 'bool',
           },
-          { internalType: 'bool', name: 'borrowingEnabled', type: 'bool' },
-          { internalType: 'bool', name: 'isActive', type: 'bool' },
-          { internalType: 'bool', name: 'isFrozen', type: 'bool' },
-          { internalType: 'uint128', name: 'liquidityIndex', type: 'uint128' },
+          {
+            internalType: 'bool',
+            name: 'borrowingEnabled',
+            type: 'bool',
+          },
+          {
+            internalType: 'bool',
+            name: 'stableBorrowRateEnabled',
+            type: 'bool',
+          },
+          {
+            internalType: 'bool',
+            name: 'isActive',
+            type: 'bool',
+          },
+          {
+            internalType: 'bool',
+            name: 'isFrozen',
+            type: 'bool',
+          },
+          {
+            internalType: 'uint128',
+            name: 'liquidityIndex',
+            type: 'uint128',
+          },
           {
             internalType: 'uint128',
             name: 'variableBorrowIndex',
             type: 'uint128',
           },
-          { internalType: 'uint128', name: 'liquidityRate', type: 'uint128' },
+          {
+            internalType: 'uint128',
+            name: 'liquidityRate',
+            type: 'uint128',
+          },
           {
             internalType: 'uint128',
             name: 'variableBorrowRate',
+            type: 'uint128',
+          },
+          {
+            internalType: 'uint128',
+            name: 'stableBorrowRate',
             type: 'uint128',
           },
           {
@@ -145,7 +136,16 @@ export const uiPoolDataProviderV3Abi = [
             name: 'lastUpdateTimestamp',
             type: 'uint40',
           },
-          { internalType: 'address', name: 'aTokenAddress', type: 'address' },
+          {
+            internalType: 'address',
+            name: 'aTokenAddress',
+            type: 'address',
+          },
+          {
+            internalType: 'address',
+            name: 'stableDebtTokenAddress',
+            type: 'address',
+          },
           {
             internalType: 'address',
             name: 'variableDebtTokenAddress',
@@ -163,6 +163,21 @@ export const uiPoolDataProviderV3Abi = [
           },
           {
             internalType: 'uint256',
+            name: 'totalPrincipalStableDebt',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
+            name: 'averageStableRate',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
+            name: 'stableDebtLastUpdateTimestamp',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
             name: 'totalScaledVariableDebt',
             type: 'uint256',
           },
@@ -171,7 +186,6 @@ export const uiPoolDataProviderV3Abi = [
             name: 'priceInMarketReferenceCurrency',
             type: 'uint256',
           },
-          { internalType: 'address', name: 'priceOracle', type: 'address' },
           {
             internalType: 'uint256',
             name: 'variableRateSlope1',
@@ -184,46 +198,16 @@ export const uiPoolDataProviderV3Abi = [
           },
           {
             internalType: 'uint256',
-            name: 'baseVariableBorrowRate',
+            name: 'stableRateSlope1',
             type: 'uint256',
           },
           {
             internalType: 'uint256',
-            name: 'optimalUsageRatio',
+            name: 'stableRateSlope2',
             type: 'uint256',
           },
-          { internalType: 'bool', name: 'isPaused', type: 'bool' },
-          { internalType: 'bool', name: 'isSiloedBorrowing', type: 'bool' },
-          {
-            internalType: 'uint128',
-            name: 'accruedToTreasury',
-            type: 'uint128',
-          },
-          { internalType: 'uint128', name: 'unbacked', type: 'uint128' },
-          {
-            internalType: 'uint128',
-            name: 'isolationModeTotalDebt',
-            type: 'uint128',
-          },
-          { internalType: 'bool', name: 'flashLoanEnabled', type: 'bool' },
-          { internalType: 'uint256', name: 'debtCeiling', type: 'uint256' },
-          {
-            internalType: 'uint256',
-            name: 'debtCeilingDecimals',
-            type: 'uint256',
-          },
-          { internalType: 'uint256', name: 'borrowCap', type: 'uint256' },
-          { internalType: 'uint256', name: 'supplyCap', type: 'uint256' },
-          { internalType: 'bool', name: 'borrowableInIsolation', type: 'bool' },
-          { internalType: 'bool', name: 'virtualAccActive', type: 'bool' },
-          {
-            internalType: 'uint128',
-            name: 'virtualUnderlyingBalance',
-            type: 'uint128',
-          },
-          { internalType: 'uint128', name: 'deficit', type: 'uint128' },
         ],
-        internalType: 'struct IUiPoolDataProviderV3.AggregatedReserveData[]',
+        internalType: 'struct IUiPoolDataProvider.AggregatedReserveData[]',
         name: '',
         type: 'tuple[]',
       },
@@ -250,7 +234,7 @@ export const uiPoolDataProviderV3Abi = [
             type: 'uint8',
           },
         ],
-        internalType: 'struct IUiPoolDataProviderV3.BaseCurrencyInfo',
+        internalType: 'struct IUiPoolDataProvider.BaseCurrencyInfo',
         name: '',
         type: 'tuple',
       },
@@ -261,30 +245,44 @@ export const uiPoolDataProviderV3Abi = [
   {
     inputs: [
       {
-        internalType: 'contract IPoolAddressesProvider',
+        internalType: 'contract ILendingPoolAddressesProvider',
         name: 'provider',
         type: 'address',
       },
     ],
     name: 'getReservesList',
-    outputs: [{ internalType: 'address[]', name: '', type: 'address[]' }],
+    outputs: [
+      {
+        internalType: 'address[]',
+        name: '',
+        type: 'address[]',
+      },
+    ],
     stateMutability: 'view',
     type: 'function',
   },
   {
     inputs: [
       {
-        internalType: 'contract IPoolAddressesProvider',
+        internalType: 'contract ILendingPoolAddressesProvider',
         name: 'provider',
         type: 'address',
       },
-      { internalType: 'address', name: 'user', type: 'address' },
+      {
+        internalType: 'address',
+        name: 'user',
+        type: 'address',
+      },
     ],
     name: 'getUserReservesData',
     outputs: [
       {
         components: [
-          { internalType: 'address', name: 'underlyingAsset', type: 'address' },
+          {
+            internalType: 'address',
+            name: 'underlyingAsset',
+            type: 'address',
+          },
           {
             internalType: 'uint256',
             name: 'scaledATokenBalance',
@@ -297,15 +295,29 @@ export const uiPoolDataProviderV3Abi = [
           },
           {
             internalType: 'uint256',
+            name: 'stableBorrowRate',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
             name: 'scaledVariableDebt',
             type: 'uint256',
           },
+          {
+            internalType: 'uint256',
+            name: 'principalStableDebt',
+            type: 'uint256',
+          },
+          {
+            internalType: 'uint256',
+            name: 'stableBorrowLastUpdateTimestamp',
+            type: 'uint256',
+          },
         ],
-        internalType: 'struct IUiPoolDataProviderV3.UserReserveData[]',
+        internalType: 'struct IUiPoolDataProvider.UserReserveData[]',
         name: '',
         type: 'tuple[]',
       },
-      { internalType: 'uint8', name: '', type: 'uint8' },
     ],
     stateMutability: 'view',
     type: 'function',
@@ -315,7 +327,7 @@ export const uiPoolDataProviderV3Abi = [
     name: 'marketReferenceCurrencyPriceInUsdProxyAggregator',
     outputs: [
       {
-        internalType: 'contract AggregatorInterface',
+        internalType: 'contract IChainlinkAggregator',
         name: '',
         type: 'address',
       },
@@ -328,7 +340,7 @@ export const uiPoolDataProviderV3Abi = [
     name: 'networkBaseTokenPriceInUsdProxyAggregator',
     outputs: [
       {
-        internalType: 'contract AggregatorInterface',
+        internalType: 'contract IChainlinkAggregator',
         name: '',
         type: 'address',
       },

@@ -188,31 +188,10 @@ const hook: PositionsHook = {
 
         // Include a token if the user has a balance
         // or if no user data is available (when querying all positions)
-
-        function isGreaterThanZero(
-          input:
-            | number
-            | readonly {
-                scaledATokenBalance: bigint
-                scaledVariableDebt: bigint
-              }[],
-          variable: 'scaledATokenBalance' | 'scaledVariableDebt',
-        ): boolean {
-          if (typeof input === 'number') {
-            return input > 0
-          }
-
-          return input.some((item) => item[variable] > 0n)
-        }
-
         const useAToken =
-          !userReserveData ||
-          (userReserveData[i] &&
-            isGreaterThanZero(userReserveData[i], 'scaledATokenBalance'))
+          !userReserveData || userReserveData[i].scaledATokenBalance > 0n
         const useVariableDebt =
-          !userReserveData ||
-          (userReserveData[i] &&
-            isGreaterThanZero(userReserveData[i], 'scaledVariableDebt'))
+          !userReserveData || userReserveData[i].scaledVariableDebt > 0n
 
         return [
           // AToken
