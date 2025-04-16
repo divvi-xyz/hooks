@@ -66,7 +66,7 @@ const hook: PositionsHook = {
     })
 
     const [
-      userReserveDataResponse,
+      [userReserveData, _userEmodeCategoryId] = [],
       [reserveIncentiveData, _userIncentivesData],
     ] = address
       ? await client.multicall({
@@ -87,7 +87,6 @@ const hook: PositionsHook = {
           allowFailure: false,
         })
       : [undefined, [undefined, undefined]]
-    const userReserveData = userReserveDataResponse?.[0]
 
     // Note: Instead of calling `getAllUserRewards`, we could use reserveIncentiveData and userIncentivesData to get all user rewards
     // but it requires some additional calculations to get the accrued rewards (linked to a/v/sToken held) on top of the unclaimedRewards to get total rewards.
