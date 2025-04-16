@@ -65,26 +65,28 @@ const hook: PositionsHook = {
       args: [aaveAddresses.poolAddressesProvider],
     })
 
-    const [userReserveDataResponse, [reserveIncentiveData, _userIncentivesData]] =
-      address
-        ? await client.multicall({
-            contracts: [
-              {
-                address: aaveAddresses.uiPoolDataProvider,
-                abi: uiPoolDataProviderV3Abi,
-                functionName: 'getUserReservesData',
-                args: [aaveAddresses.poolAddressesProvider, address as Address],
-              },
-              {
-                address: aaveAddresses.uiIncentiveDataProvider,
-                abi: uiIncentiveDataProviderV3Abi,
-                functionName: 'getFullReservesIncentiveData',
-                args: [aaveAddresses.poolAddressesProvider, address as Address],
-              },
-            ],
-            allowFailure: false,
-          })
-        : [undefined, [undefined, undefined]]
+    const [
+      userReserveDataResponse,
+      [reserveIncentiveData, _userIncentivesData],
+    ] = address
+      ? await client.multicall({
+          contracts: [
+            {
+              address: aaveAddresses.uiPoolDataProvider,
+              abi: uiPoolDataProviderV3Abi,
+              functionName: 'getUserReservesData',
+              args: [aaveAddresses.poolAddressesProvider, address as Address],
+            },
+            {
+              address: aaveAddresses.uiIncentiveDataProvider,
+              abi: uiIncentiveDataProviderV3Abi,
+              functionName: 'getFullReservesIncentiveData',
+              args: [aaveAddresses.poolAddressesProvider, address as Address],
+            },
+          ],
+          allowFailure: false,
+        })
+      : [undefined, [undefined, undefined]]
     const userReserveData = userReserveDataResponse?.[0]
 
     // Note: Instead of calling `getAllUserRewards`, we could use reserveIncentiveData and userIncentivesData to get all user rewards
