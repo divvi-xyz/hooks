@@ -9,23 +9,19 @@ interface IncentiveData {
 interface ReserveIncentivesData {
   readonly aIncentiveData: IncentiveData
   readonly vIncentiveData: IncentiveData
-  readonly sIncentiveData: IncentiveData
 }
 
 export function getAaveTokensWithIncentives(
   reservesIncentiveData: readonly ReserveIncentivesData[],
 ): Address[] {
   return reservesIncentiveData
-    .map(({ aIncentiveData, vIncentiveData, sIncentiveData }) => {
+    .map(({ aIncentiveData, vIncentiveData }) => {
       const assetsWithRewards: Address[] = []
       if (aIncentiveData.rewardsTokenInformation.length) {
         assetsWithRewards.push(aIncentiveData.tokenAddress)
       }
       if (vIncentiveData.rewardsTokenInformation.length) {
         assetsWithRewards.push(vIncentiveData.tokenAddress)
-      }
-      if (sIncentiveData.rewardsTokenInformation.length) {
-        assetsWithRewards.push(sIncentiveData.tokenAddress)
       }
       return assetsWithRewards
     })

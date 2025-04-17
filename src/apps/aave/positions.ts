@@ -65,26 +65,31 @@ const hook: PositionsHook = {
       args: [aaveAddresses.poolAddressesProvider],
     })
 
-    const [userReserveData, [reserveIncentiveData, _userIncentivesData]] =
-      address
-        ? await client.multicall({
-            contracts: [
-              {
-                address: aaveAddresses.uiPoolDataProvider,
-                abi: uiPoolDataProviderV3Abi,
-                functionName: 'getUserReservesData',
-                args: [aaveAddresses.poolAddressesProvider, address as Address],
-              },
-              {
-                address: aaveAddresses.uiIncentiveDataProvider,
-                abi: uiIncentiveDataProviderV3Abi,
-                functionName: 'getFullReservesIncentiveData',
-                args: [aaveAddresses.poolAddressesProvider, address as Address],
-              },
-            ],
-            allowFailure: false,
-          })
-        : [undefined, [undefined, undefined]]
+    const [
+      [userReserveData, _userEmodeCategoryId],
+      [reserveIncentiveData, _userIncentivesData],
+    ] = address
+      ? await client.multicall({
+          contracts: [
+            {
+              address: aaveAddresses.uiPoolDataProvider,
+              abi: uiPoolDataProviderV3Abi,
+              functionName: 'getUserReservesData',
+              args: [aaveAddresses.poolAddressesProvider, address as Address],
+            },
+            {
+              address: aaveAddresses.uiIncentiveDataProvider,
+              abi: uiIncentiveDataProviderV3Abi,
+              functionName: 'getFullReservesIncentiveData',
+              args: [aaveAddresses.poolAddressesProvider, address as Address],
+            },
+          ],
+          allowFailure: false,
+        })
+      : [
+          [undefined, undefined],
+          [undefined, undefined],
+        ]
 
     // Note: Instead of calling `getAllUserRewards`, we could use reserveIncentiveData and userIncentivesData to get all user rewards
     // but it requires some additional calculations to get the accrued rewards (linked to a/v/sToken held) on top of the unclaimedRewards to get total rewards.
