@@ -325,10 +325,10 @@
   resolved "https://registry.yarnpkg.com/@bcoe/v8-coverage/-/v8-coverage-0.2.3.tgz#75a2e8b51cb758a7553d6804a5932d7aace75c39"
   integrity sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==
 
-"@bgd-labs/aave-address-book@4.17.2":
-  version "4.17.2"
-  resolved "https://registry.yarnpkg.com/@bgd-labs/aave-address-book/-/aave-address-book-4.17.2.tgz#976823b4c825aeda33bd9375705260aef857c88c"
-  integrity sha512-UVVCaLlLBA5VHl+qip/9qH8yZnNyIvyeRd4nHgKAluNbjeyRPzqESqToGmWSvtWOYK2kUtOrWCu0z9ncq6t6IA==
+"@bgd-labs/aave-address-book@4.22.2":
+  version "4.22.2"
+  resolved "https://registry.yarnpkg.com/@bgd-labs/aave-address-book/-/aave-address-book-4.22.2.tgz#59ddac0180fd220f502bc5ff635783971bfacd89"
+  integrity sha512-xoeyQ2ZrGuHbvm3e8K09Lc51CJKpKRDUyaGWk1yrfRRT4Yn8ipMMxRxhlHIwtN6K0GAgp6cyjG8+CNfdFLMaQg==
 
 "@cspotcode/source-map-support@^0.8.0":
   version "0.8.1"
