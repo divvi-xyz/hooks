@@ -157,7 +157,7 @@ const beefyAppTokenDefinition = ({
           tokenDecimals:
             tokensByTokenId[
               getTokenId({
-                address: vault.earnedTokenAddress,
+                address: vault.tokenAddress, // use tokenAddress instead of earnedTokenAddress to avoid unmatching decimals
                 networkId,
               })
             ].decimals,
