@@ -19,6 +19,7 @@ import {
 import { vaultAbi } from './abis/vault'
 import { ChainType, SquidCallType } from '@0xsquid/squid-types'
 import { prepareSwapTransactions } from '../../utils/prepareSwapTransactions'
+import { min, ceilDiv } from '../../utils/bigInt'
 
 // Hardcoded fallback if simulation isn't enabled
 const DEFAULT_DEPOSIT_GAS = 750_000n
@@ -138,7 +139,42 @@ const hook: ShortcutsHook = {
           const walletAddress = address as Address
           const transactions: Transaction[] = []
 
-          const amountToWithdraw = parseUnits(tokens[0].amount, tokenDecimals)
+          const client = getClient(networkId)
+
+          // Calculate shares needed for the desired token amount
+          const tokenAmount = parseUnits(tokens[0].amount, tokenDecimals)
+
+          const [pricePerFullShare, userBalance, vaultDecimals] =
+            await client.multicall({
+              contracts: [
+                {
+                  address: positionAddress,
+                  abi: vaultAbi,
+                  functionName: 'getPricePerFullShare',
+                },
+                {
+                  address: positionAddress,
+                  abi: vaultAbi,
+                  functionName: 'balanceOf',
+                  args: [walletAddress],
+                },
+                {
+                  address: positionAddress,
+                  abi: vaultAbi,
+                  functionName: 'decimals',
+                },
+              ],
+              allowFailure: false,
+            })
+
+          // Calculate shares: ceil(tokenAmount * 10^vaultDecimals / pricePerFullShare)
+          const shares = ceilDiv(
+            tokenAmount * 10n ** BigInt(vaultDecimals),
+            pricePerFullShare,
+          )
+
+          // Ensure we don't withdraw more shares than the user has
+          const sharesToWithdraw = min(shares, userBalance)
 
           const withdrawTx: Transaction = tokens[0].useMax
             ? {
@@ -158,7 +194,7 @@ const hook: ShortcutsHook = {
                 data: encodeFunctionData({
                   abi: vaultAbi,
                   functionName: 'withdraw',
-                  args: [amountToWithdraw],
+                  args: [sharesToWithdraw],
                 }),
               }
 
