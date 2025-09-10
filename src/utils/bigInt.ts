@@ -28,5 +28,5 @@ export const max = (a: bigint, b: bigint): bigint => (a > b ? a : b)
  * @returns The ceiling of the division result
  */
 export const ceilDiv = (dividend: bigint, divisor: bigint): bigint => {
-  return dividend / divisor + (dividend % divisor === 0n ? 0n : 1n)
+  return (dividend + divisor - 1n) / divisor
 }
