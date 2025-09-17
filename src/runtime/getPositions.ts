@@ -31,6 +31,16 @@ import { getTokenId } from './getTokenId'
 import { isNative } from './isNative'
 import { TFunction } from 'i18next'
 import { getPositionId } from './getPositionId'
+import { LRUCache } from 'lru-cache'
+
+// Cache for getBaseTokensInfo with 10-minute TTL
+const tokensInfoCache = new LRUCache({
+  max: 1,
+  // In milliseconds
+  ttl: 10 * 60 * 1000,
+})
+
+const TOKENS_INFO_CACHE_KEY = 'base-tokens-info'
 
 interface RawTokenInfo {
   address?: string
@@ -54,23 +64,29 @@ export async function getBaseTokensInfo(
   getTokensInfoUrl: string,
   networkIds: NetworkId[] = [],
 ): Promise<TokensInfo> {
-  // Get base tokens
-  const url = networkIds.length
-    ? `${getTokensInfoUrl}?networkIds=${networkIds.join(',')}`
-    : getTokensInfoUrl
-  const data = await got.get(url).json<Record<string, RawTokenInfo>>()
+  let tokensInfo = tokensInfoCache.get(TOKENS_INFO_CACHE_KEY) as TokensInfo
+  if (!tokensInfo) {
+    // Get base tokens
+    const url = networkIds.length
+      ? `${getTokensInfoUrl}?networkIds=${networkIds.join(',')}`
+      : getTokensInfoUrl
+    const data = await got.get(url).json<Record<string, RawTokenInfo>>()
 
-  // Map to TokenInfo
-  const tokensInfo: TokensInfo = {}
-  for (const [tokenId, tokenInfo] of Object.entries(data)) {
-    tokensInfo[tokenId] = {
-      ...tokenInfo,
-      priceUsd: toSerializedDecimalNumber(tokenInfo.priceUsd ?? 0),
-      // We don't have this info here but it's not yet needed for base tokens anyway
-      balance: toDecimalNumber(0n, 0),
-      totalSupply: toDecimalNumber(0n, 0),
+    // Map to TokenInfo
+    tokensInfo = {}
+    for (const [tokenId, tokenInfo] of Object.entries(data)) {
+      tokensInfo[tokenId] = {
+        ...tokenInfo,
+        priceUsd: toSerializedDecimalNumber(tokenInfo.priceUsd ?? 0),
+        // We don't have this info here but it's not yet needed for base tokens anyway
+        balance: toDecimalNumber(0n, 0),
+        totalSupply: toDecimalNumber(0n, 0),
+      }
     }
+
+    tokensInfoCache.set(TOKENS_INFO_CACHE_KEY, tokensInfo)
   }
+
   return tokensInfo
 }
 
