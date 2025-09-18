@@ -115,10 +115,9 @@ function createApp() {
           .transform((val) => val.toLowerCase())
           .optional(),
         appIds: z
-          .union([
-            z.array(z.string()).nonempty(),
-            z.string(), // singleton arrays sometimes serialize as single values
-          ])
+          .array(z.string())
+          .nonempty()
+          .or(z.string()) // singleton arrays sometimes serialize as single values
           .optional()
           .transform((val) =>
             val ? (Array.isArray(val) ? val : [val]) : config.POSITION_IDS,
@@ -147,6 +146,7 @@ function createApp() {
         : true
       const { address } = parsedRequest.query
       const networkIds = getNetworkIds(parsedRequest.query)
+      console.log('parsedRequest.query.appIds', parsedRequest.query.appIds)
       const appIds = parsedRequest.query.appIds.filter((appId) =>
         returnAavePositions ? true : appId !== 'aave',
       )
