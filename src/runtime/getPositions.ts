@@ -52,7 +52,7 @@ type AppPositionDefinition = PositionDefinition & {
 }
 
 const baseTokensInfoCache = new LRUCache<string, TokensInfo>({
-  max: 10, // Keep up to 10 different URL combinations
+  max: 50, // Should be enough for supported networks combinations for now
   ttl: 5 * 1000, // 5 seconds,
   allowStale: true, // allows stale-while-revalidate behavior
   fetchMethod: async (url: string) => {
