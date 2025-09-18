@@ -54,7 +54,7 @@ type AppPositionDefinition = PositionDefinition & {
 const baseTokensInfoCache = new LRUCache<string, TokensInfo>({
   max: 50, // Should be enough for supported networks combinations for now
   ttl: 5 * 1000, // 5 seconds,
-  allowStale: true, // allows stale-while-revalidate behavior
+  allowStale: true, // allow stale-while-revalidate behavior
   fetchMethod: async (url: string) => {
     // Get base tokens
     const data = await got.get(url).json<Record<string, RawTokenInfo>>()
