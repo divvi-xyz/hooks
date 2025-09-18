@@ -2,6 +2,7 @@ import got from '../utils/got'
 import BigNumber from 'bignumber.js'
 import { Address, ContractFunctionExecutionError } from 'viem'
 import { erc20Abi } from '../abis/erc-20'
+import { LRUCache } from 'lru-cache'
 import {
   AppInfo,
   AppTokenPosition,
@@ -50,28 +51,42 @@ type AppPositionDefinition = PositionDefinition & {
   appId: string
 }
 
+const baseTokensInfoCache = new LRUCache<string, TokensInfo>({
+  max: 10, // Keep up to 10 different URL combinations
+  ttl: 5 * 1000, // 5 seconds,
+  allowStale: true, // allows stale-while-revalidate behavior
+  fetchMethod: async (url: string) => {
+    // Get base tokens
+    const data = await got.get(url).json<Record<string, RawTokenInfo>>()
+
+    // Map to TokenInfo
+    const tokensInfo: TokensInfo = {}
+    for (const [tokenId, tokenInfo] of Object.entries(data)) {
+      tokensInfo[tokenId] = {
+        ...tokenInfo,
+        priceUsd: toSerializedDecimalNumber(tokenInfo.priceUsd ?? 0),
+        // We don't have this info here but it's not yet needed for base tokens anyway
+        balance: toDecimalNumber(0n, 0),
+        totalSupply: toDecimalNumber(0n, 0),
+      }
+    }
+    return tokensInfo
+  },
+})
+
 export async function getBaseTokensInfo(
   getTokensInfoUrl: string,
   networkIds: NetworkId[] = [],
 ): Promise<TokensInfo> {
-  // Get base tokens
   const url = networkIds.length
     ? `${getTokensInfoUrl}?networkIds=${networkIds.join(',')}`
     : getTokensInfoUrl
-  const data = await got.get(url).json<Record<string, RawTokenInfo>>()
 
-  // Map to TokenInfo
-  const tokensInfo: TokensInfo = {}
-  for (const [tokenId, tokenInfo] of Object.entries(data)) {
-    tokensInfo[tokenId] = {
-      ...tokenInfo,
-      priceUsd: toSerializedDecimalNumber(tokenInfo.priceUsd ?? 0),
-      // We don't have this info here but it's not yet needed for base tokens anyway
-      balance: toDecimalNumber(0n, 0),
-      totalSupply: toDecimalNumber(0n, 0),
-    }
+  const result = await baseTokensInfoCache.fetch(url)
+  if (!result) {
+    throw new Error(`Failed to fetch tokens info for URL: ${url}`)
   }
-  return tokensInfo
+  return result
 }
 
 async function getERC20TokenInfo(
