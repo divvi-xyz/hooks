@@ -146,7 +146,6 @@ function createApp() {
         : true
       const { address } = parsedRequest.query
       const networkIds = getNetworkIds(parsedRequest.query)
-      console.log('parsedRequest.query.appIds', parsedRequest.query.appIds)
       const appIds = parsedRequest.query.appIds.filter((appId) =>
         returnAavePositions ? true : appId !== 'aave',
       )
