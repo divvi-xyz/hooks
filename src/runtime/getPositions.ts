@@ -33,15 +33,6 @@ import { TFunction } from 'i18next'
 import { getPositionId } from './getPositionId'
 import { LRUCache } from 'lru-cache'
 
-// Cache for getBaseTokensInfo with 10-minute TTL
-const tokensInfoCache = new LRUCache({
-  max: 1,
-  // In milliseconds
-  ttl: 10 * 60 * 1000,
-})
-
-const TOKENS_INFO_CACHE_KEY = 'base-tokens-info'
-
 interface RawTokenInfo {
   address?: string
   name: string
@@ -60,20 +51,16 @@ type AppPositionDefinition = PositionDefinition & {
   appId: string
 }
 
-export async function getBaseTokensInfo(
-  getTokensInfoUrl: string,
-  networkIds: NetworkId[] = [],
-): Promise<TokensInfo> {
-  let tokensInfo = tokensInfoCache.get(TOKENS_INFO_CACHE_KEY) as TokensInfo
-  if (!tokensInfo) {
+const baseTokensInfoCache = new LRUCache<string, TokensInfo>({
+  max: 10, // Keep up to 10 different URL combinations
+  ttl: 5 * 1000, // 5 seconds,
+  allowStale: true, // allows stale-while-revalidate behavior
+  fetchMethod: async (url: string) => {
     // Get base tokens
-    const url = networkIds.length
-      ? `${getTokensInfoUrl}?networkIds=${networkIds.join(',')}`
-      : getTokensInfoUrl
     const data = await got.get(url).json<Record<string, RawTokenInfo>>()
 
     // Map to TokenInfo
-    tokensInfo = {}
+    const tokensInfo: TokensInfo = {}
     for (const [tokenId, tokenInfo] of Object.entries(data)) {
       tokensInfo[tokenId] = {
         ...tokenInfo,
@@ -83,11 +70,23 @@ export async function getBaseTokensInfo(
         totalSupply: toDecimalNumber(0n, 0),
       }
     }
+    return tokensInfo
+  },
+})
 
-    tokensInfoCache.set(TOKENS_INFO_CACHE_KEY, tokensInfo)
+export async function getBaseTokensInfo(
+  getTokensInfoUrl: string,
+  networkIds: NetworkId[] = [],
+): Promise<TokensInfo> {
+  const url = networkIds.length
+    ? `${getTokensInfoUrl}?networkIds=${networkIds.join(',')}`
+    : getTokensInfoUrl
+
+  const result = await baseTokensInfoCache.fetch(url)
+  if (!result) {
+    throw new Error(`Failed to fetch tokens info for URL: ${url}`)
   }
-
-  return tokensInfo
+  return result
 }
 
 async function getERC20TokenInfo(
