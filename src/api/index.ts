@@ -114,6 +114,14 @@ function createApp() {
           .regex(/^0x[a-fA-F0-9]{40}$/)
           .transform((val) => val.toLowerCase())
           .optional(),
+        appIds: z
+          .array(z.string())
+          .nonempty()
+          .or(z.string()) // singleton arrays sometimes serialize as single values
+          .optional()
+          .transform((val) =>
+            val ? (Array.isArray(val) ? val : [val]) : config.POSITION_IDS,
+          ),
       }),
       z.union([
         z.object({ network: z.nativeEnum(LegacyNetwork) }), // legacy schema: 'celo' or 'celoAlfajores' passed as 'network' field on the request
@@ -138,7 +146,7 @@ function createApp() {
         : true
       const { address } = parsedRequest.query
       const networkIds = getNetworkIds(parsedRequest.query)
-      const appIds = config.POSITION_IDS.filter((appId) =>
+      const appIds = parsedRequest.query.appIds.filter((appId) =>
         returnAavePositions ? true : appId !== 'aave',
       )
       const baseTokensInfo = await getBaseTokensInfo(
