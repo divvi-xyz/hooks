@@ -1,6 +1,7 @@
 import got from '../../utils/got'
 import { Address } from 'viem'
 import { NetworkId } from '../../types/networkId'
+import { LRUCache } from 'lru-cache'
 
 export type BeefyVault = {
   id: string
@@ -40,6 +41,14 @@ export type GovVault = BeefyVault & {
   earnedTokenAddress: Address[]
 }
 
+type BeefyData = Record<string, number | undefined>
+
+type BeefyPrices = BeefyData
+
+type BeefyTvls = BeefyData
+
+type BeefyApyBreakdown = Record<string, Record<string, number> | undefined>
+
 export const NETWORK_ID_TO_BEEFY_BLOCKCHAIN_ID: Record<
   NetworkId,
   string | null
@@ -75,80 +84,122 @@ const NETWORK_ID_TO_CHAIN_ID: {
   [NetworkId['base-sepolia']]: 84532,
 }
 
+const CACHE_CONFIG = {
+  max: 20,
+  ttl: 5 * 1000, // 5 seconds
+  allowStale: true, // allow stale-while-revalidate behavior
+} as const
+
+// Cache used for non-parametrized endpoints
+const urlCache = new LRUCache({
+  ...CACHE_CONFIG,
+  fetchMethod: async (url: string) => {
+    return got.get(url).json()
+  },
+})
+
+const vaultsCache = new LRUCache<
+  NetworkId,
+  { vaults: BaseBeefyVault[]; govVaults: GovVault[] }
+>({
+  ...CACHE_CONFIG,
+  fetchMethod: async (networkId: NetworkId) => {
+    const [vaults, govVaults] = await Promise.all([
+      got
+        .get(
+          `https://api.beefy.finance/harvestable-vaults/${NETWORK_ID_TO_BEEFY_BLOCKCHAIN_ID[networkId]}`,
+        )
+        .json<BaseBeefyVault[]>(),
+      got
+        .get(
+          `https://api.beefy.finance/gov-vaults/${NETWORK_ID_TO_BEEFY_BLOCKCHAIN_ID[networkId]}`,
+        )
+        .json<GovVault[]>(),
+    ])
+
+    return {
+      vaults,
+      govVaults,
+    }
+  },
+})
+
+const pricesCache = new LRUCache<NetworkId, BeefyData>({
+  ...CACHE_CONFIG,
+  fetchMethod: async (networkId: NetworkId): Promise<BeefyData> => {
+    const [lpsPrices, tokenPrices, tokens] = await Promise.all([
+      got.get(`https://api.beefy.finance/lps`).json<BeefyData>(),
+      got.get(`https://api.beefy.finance/prices`).json<BeefyData>(),
+      got
+        .get(
+          `https://api.beefy.finance/tokens/${NETWORK_ID_TO_BEEFY_BLOCKCHAIN_ID[networkId]}`,
+        )
+        .json<
+          Record<
+            string, // oracleId
+            {
+              // These are the fields we need, but there are more
+              address: string
+              oracle: string // examples: 'lps', 'tokens'
+              oracleId: string
+            }
+          >
+        >(),
+    ])
+
+    // Combine lps prices with token prices
+    return {
+      ...lpsPrices,
+      ...Object.fromEntries(
+        Object.entries(tokens)
+          .filter(([, { oracle }]) => oracle === 'tokens')
+          .map(([, { address, oracleId }]) => [
+            address.toLowerCase(),
+            tokenPrices[oracleId],
+          ]),
+      ),
+    }
+  },
+})
+
+export async function getApyBreakdown(): Promise<BeefyApyBreakdown> {
+  const apyBreakdown = (await urlCache.fetch(
+    'https://api.beefy.finance/apy/breakdown/',
+  )) as BeefyApyBreakdown | undefined
+  if (!apyBreakdown) {
+    throw new Error('Failed to fetch APY breakdown data')
+  }
+  return apyBreakdown
+}
+
+export async function getTvls(networkId: NetworkId): Promise<BeefyTvls> {
+  const tvlResponse = (await urlCache.fetch(
+    'https://api.beefy.finance/tvl/',
+  )) as Record<number, BeefyTvls> | undefined
+  if (!tvlResponse) {
+    throw new Error('Failed to fetch TVL data')
+  }
+  return tvlResponse[NETWORK_ID_TO_CHAIN_ID[networkId]] ?? {}
+}
+
 export async function getBeefyVaults(
   networkId: NetworkId,
 ): Promise<{ vaults: BaseBeefyVault[]; govVaults: GovVault[] }> {
-  const [vaults, govVaults] = await Promise.all([
-    got
-      .get(
-        `https://api.beefy.finance/harvestable-vaults/${NETWORK_ID_TO_BEEFY_BLOCKCHAIN_ID[networkId]}`,
-      )
-      .json<BaseBeefyVault[]>(),
-    got
-      .get(
-        `https://api.beefy.finance/gov-vaults/${NETWORK_ID_TO_BEEFY_BLOCKCHAIN_ID[networkId]}`,
-      )
-      .json<GovVault[]>(),
-  ])
+  const result = await vaultsCache.fetch(networkId)
 
-  return {
-    vaults,
-    govVaults,
+  if (!result) {
+    throw new Error('Failed to fetch vaults data')
   }
+
+  return result
 }
 
 export async function getBeefyPrices(
   networkId: NetworkId,
-): Promise<Record<string, number | undefined>> {
-  const [lpsPrices, tokenPrices, tokens] = await Promise.all([
-    got
-      .get(`https://api.beefy.finance/lps`)
-      .json<Record<string, number | undefined>>(),
-    got
-      .get(`https://api.beefy.finance/prices`)
-      .json<Record<string, number | undefined>>(),
-    got
-      .get(
-        `https://api.beefy.finance/tokens/${NETWORK_ID_TO_BEEFY_BLOCKCHAIN_ID[networkId]}`,
-      )
-      .json<
-        Record<
-          string, // oracleId
-          {
-            // These are the fields we need, but there are more
-            address: string
-            oracle: string // examples: 'lps', 'tokens'
-            oracleId: string
-          }
-        >
-      >(),
-  ])
-
-  // Combine lps prices with token prices
-  return {
-    ...lpsPrices,
-    ...Object.fromEntries(
-      Object.entries(tokens)
-        .filter(([, { oracle }]) => oracle === 'tokens')
-        .map(([, { address, oracleId }]) => [
-          address.toLowerCase(),
-          tokenPrices[oracleId],
-        ]),
-    ),
+): Promise<BeefyPrices> {
+  const prices = await pricesCache.fetch(networkId)
+  if (!prices) {
+    throw new Error('Failed to fetch prices data')
   }
-}
-
-export async function getApyBreakdown() {
-  return got
-    .get(`https://api.beefy.finance/apy/breakdown/`)
-    .json<Record<string, Record<string, number> | undefined>>()
-}
-
-export async function getTvls(
-  networkId: NetworkId,
-): Promise<Record<string, number | undefined>> {
-  const tvlResponse = await got
-    .get(`https://api.beefy.finance/tvl/`)
-    .json<Record<number, Record<string, number | undefined>>>()
-  return tvlResponse[NETWORK_ID_TO_CHAIN_ID[networkId]] ?? {}
+  return prices
 }
