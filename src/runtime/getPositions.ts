@@ -79,7 +79,7 @@ export async function getBaseTokensInfo(
   networkIds: NetworkId[] = [],
 ): Promise<TokensInfo> {
   const url = networkIds.length
-    ? `${getTokensInfoUrl}?networkIds=${networkIds.join(',')}`
+    ? `${getTokensInfoUrl}?networkIds=${[...networkIds].sort().join(',')}`
     : getTokensInfoUrl
 
   const result = await baseTokensInfoCache.fetch(url)
