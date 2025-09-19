@@ -31,6 +31,7 @@ import { getTokenId } from './getTokenId'
 import { isNative } from './isNative'
 import { TFunction } from 'i18next'
 import { getPositionId } from './getPositionId'
+import { LRUCache } from 'lru-cache'
 
 interface RawTokenInfo {
   address?: string
@@ -50,28 +51,42 @@ type AppPositionDefinition = PositionDefinition & {
   appId: string
 }
 
+const baseTokensInfoCache = new LRUCache<string, TokensInfo>({
+  max: 50, // Should be enough for supported networks combinations for now
+  ttl: 5 * 1000, // 5 seconds,
+  allowStale: true, // allow stale-while-revalidate behavior
+  fetchMethod: async (url: string) => {
+    // Get base tokens
+    const data = await got.get(url).json<Record<string, RawTokenInfo>>()
+
+    // Map to TokenInfo
+    const tokensInfo: TokensInfo = {}
+    for (const [tokenId, tokenInfo] of Object.entries(data)) {
+      tokensInfo[tokenId] = {
+        ...tokenInfo,
+        priceUsd: toSerializedDecimalNumber(tokenInfo.priceUsd ?? 0),
+        // We don't have this info here but it's not yet needed for base tokens anyway
+        balance: toDecimalNumber(0n, 0),
+        totalSupply: toDecimalNumber(0n, 0),
+      }
+    }
+    return tokensInfo
+  },
+})
+
 export async function getBaseTokensInfo(
   getTokensInfoUrl: string,
   networkIds: NetworkId[] = [],
 ): Promise<TokensInfo> {
-  // Get base tokens
   const url = networkIds.length
-    ? `${getTokensInfoUrl}?networkIds=${networkIds.join(',')}`
+    ? `${getTokensInfoUrl}?networkIds=${[...networkIds].sort().join(',')}`
     : getTokensInfoUrl
-  const data = await got.get(url).json<Record<string, RawTokenInfo>>()
 
-  // Map to TokenInfo
-  const tokensInfo: TokensInfo = {}
-  for (const [tokenId, tokenInfo] of Object.entries(data)) {
-    tokensInfo[tokenId] = {
-      ...tokenInfo,
-      priceUsd: toSerializedDecimalNumber(tokenInfo.priceUsd ?? 0),
-      // We don't have this info here but it's not yet needed for base tokens anyway
-      balance: toDecimalNumber(0n, 0),
-      totalSupply: toDecimalNumber(0n, 0),
-    }
+  const result = await baseTokensInfoCache.fetch(url)
+  if (!result) {
+    throw new Error(`Failed to fetch tokens info for URL: ${url}`)
   }
-  return tokensInfo
+  return result
 }
 
 async function getERC20TokenInfo(
