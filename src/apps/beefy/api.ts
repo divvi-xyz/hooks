@@ -41,14 +41,13 @@ export type GovVault = BeefyVault & {
   earnedTokenAddress: Address[]
 }
 
-export type BeefyTvl = Record<number, Record<string, number | undefined>>
+type BeefyData = Record<string, number | undefined>
 
-export type BeefyApyBreakdown = Record<
-  string,
-  Record<string, number> | undefined
->
+type BeefyPrices = BeefyData
 
-export type BeefyPrices = Record<string, number | undefined>
+type BeefyTvls = BeefyData
+
+type BeefyApyBreakdown = Record<string, Record<string, number> | undefined>
 
 export const NETWORK_ID_TO_BEEFY_BLOCKCHAIN_ID: Record<
   NetworkId,
@@ -85,30 +84,27 @@ const NETWORK_ID_TO_CHAIN_ID: {
   [NetworkId['base-sepolia']]: 84532,
 }
 
-const cache = new LRUCache({
-  max: 50, // Prevent excessive memory consumption
-  ttl: 10 * 60 * 1000, // 10 minutes
-})
-
-const CACHE_KEYS = {
-  VAULTS: (networkId: NetworkId) => `beefy:vaults:${networkId}`,
-  GOV_VAULTS: (networkId: NetworkId) => `beefy:gov-vaults:${networkId}`,
-  PRICES: (networkId: NetworkId) => `beefy:prices:${networkId}`,
-  APY_BREAKDOWN: () => 'beefy:apy-breakdown',
-  TVL: () => 'beefy:tvl',
+const CACHE_CONFIG = {
+  max: 20,
+  ttl: 5 * 1000, // 5 seconds
+  allowStale: true, // allow stale-while-revalidate behavior
 } as const
 
-export async function getBeefyVaults(
-  networkId: NetworkId,
-): Promise<{ vaults: BaseBeefyVault[]; govVaults: GovVault[] }> {
-  const vaultsKey = CACHE_KEYS.VAULTS(networkId)
-  const govVaultsKey = CACHE_KEYS.GOV_VAULTS(networkId)
+// Cache used for non-parametrized endpoints
+const urlCache = new LRUCache({
+  ...CACHE_CONFIG,
+  fetchMethod: async (url: string) => {
+    return got.get(url).json()
+  },
+})
 
-  let vaults = cache.get(vaultsKey) as BaseBeefyVault[] | undefined
-  let govVaults = cache.get(govVaultsKey) as GovVault[] | undefined
-
-  if (!vaults || !govVaults) {
-    const [vaultsResponse, govVaultsResponse] = await Promise.all([
+const vaultsCache = new LRUCache<
+  NetworkId,
+  { vaults: BaseBeefyVault[]; govVaults: GovVault[] }
+>({
+  ...CACHE_CONFIG,
+  fetchMethod: async (networkId: NetworkId) => {
+    const [vaults, govVaults] = await Promise.all([
       got
         .get(
           `https://api.beefy.finance/harvestable-vaults/${NETWORK_ID_TO_BEEFY_BLOCKCHAIN_ID[networkId]}`,
@@ -121,31 +117,19 @@ export async function getBeefyVaults(
         .json<GovVault[]>(),
     ])
 
-    // Cache the responses
-    cache.set(vaultsKey, vaultsResponse)
-    cache.set(govVaultsKey, govVaultsResponse)
+    return {
+      vaults,
+      govVaults,
+    }
+  },
+})
 
-    vaults = vaultsResponse
-    govVaults = govVaultsResponse
-  }
-
-  return {
-    vaults,
-    govVaults,
-  }
-}
-
-export async function getBeefyPrices(
-  networkId: NetworkId,
-): Promise<BeefyPrices> {
-  const pricesKey = CACHE_KEYS.PRICES(networkId)
-
-  let prices = cache.get(pricesKey) as BeefyPrices | undefined
-
-  if (!prices) {
+const pricesCache = new LRUCache<NetworkId, BeefyData>({
+  ...CACHE_CONFIG,
+  fetchMethod: async (networkId: NetworkId): Promise<BeefyData> => {
     const [lpsPrices, tokenPrices, tokens] = await Promise.all([
-      got.get(`https://api.beefy.finance/lps`).json<BeefyPrices>(),
-      got.get(`https://api.beefy.finance/prices`).json<BeefyPrices>(),
+      got.get(`https://api.beefy.finance/lps`).json<BeefyData>(),
+      got.get(`https://api.beefy.finance/prices`).json<BeefyData>(),
       got
         .get(
           `https://api.beefy.finance/tokens/${NETWORK_ID_TO_BEEFY_BLOCKCHAIN_ID[networkId]}`,
@@ -164,7 +148,7 @@ export async function getBeefyPrices(
     ])
 
     // Combine lps prices with token prices
-    prices = {
+    return {
       ...lpsPrices,
       ...Object.fromEntries(
         Object.entries(tokens)
@@ -175,45 +159,47 @@ export async function getBeefyPrices(
           ]),
       ),
     }
+  },
+})
 
-    // Cache the response
-    cache.set(pricesKey, prices)
-  }
-
-  return prices
-}
-
-export async function getApyBreakdown() {
-  const cacheKey = CACHE_KEYS.APY_BREAKDOWN()
-
-  let apyBreakdown = cache.get(cacheKey) as BeefyApyBreakdown | undefined
-
+export async function getApyBreakdown(): Promise<BeefyApyBreakdown> {
+  const apyBreakdown = (await urlCache.fetch(
+    'https://api.beefy.finance/apy/breakdown/',
+  )) as BeefyApyBreakdown | undefined
   if (!apyBreakdown) {
-    // Fetch from API if not in cache
-    apyBreakdown = await got
-      .get(`https://api.beefy.finance/apy/breakdown/`)
-      .json<BeefyApyBreakdown>()
-
-    // Cache the response
-    cache.set(cacheKey, apyBreakdown)
+    throw new Error('Failed to fetch APY breakdown data')
   }
-
   return apyBreakdown
 }
 
-export async function getTvls(
+export async function getTvls(networkId: NetworkId): Promise<BeefyTvls> {
+  const tvlResponse = (await urlCache.fetch(
+    'https://api.beefy.finance/tvl/',
+  )) as Record<number, BeefyTvls> | undefined
+  if (!tvlResponse) {
+    throw new Error('Failed to fetch TVL data')
+  }
+  return tvlResponse[NETWORK_ID_TO_CHAIN_ID[networkId]] ?? {}
+}
+
+export async function getBeefyVaults(
   networkId: NetworkId,
-): Promise<Record<string, number | undefined>> {
-  const cacheKey = CACHE_KEYS.TVL()
+): Promise<{ vaults: BaseBeefyVault[]; govVaults: GovVault[] }> {
+  const result = await vaultsCache.fetch(networkId)
 
-  let tvl = cache.get(cacheKey) as BeefyTvl | undefined
-
-  if (!tvl) {
-    tvl = await got.get(`https://api.beefy.finance/tvl/`).json<BeefyTvl>()
-
-    // Cache the response
-    cache.set(cacheKey, tvl)
+  if (!result) {
+    throw new Error('Failed to fetch vaults data')
   }
 
-  return tvl[NETWORK_ID_TO_CHAIN_ID[networkId]] ?? {}
+  return result
+}
+
+export async function getBeefyPrices(
+  networkId: NetworkId,
+): Promise<BeefyPrices> {
+  const prices = await pricesCache.fetch(networkId)
+  if (!prices) {
+    throw new Error('Failed to fetch prices data')
+  }
+  return prices
 }
